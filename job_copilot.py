@@ -160,7 +160,12 @@ def gemini_json(model_name: str, prompt: str, retries: int = 3) -> dict | None:
     for attempt in range(1, retries + 1):
         try:
             resp = model.generate_content(prompt)
-            return json.loads(_strip_json_fences(resp.text))
+            data = json.loads(_strip_json_fences(resp.text))
+            # Gemini sometimes returns a JSON array; unwrap to the first object
+            # so callers can always rely on getting a dict (or None).
+            if isinstance(data, list):
+                data = next((item for item in data if isinstance(item, dict)), None)
+            return data if isinstance(data, dict) else None
         except json.JSONDecodeError:
             if attempt == retries:
                 return None
