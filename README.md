@@ -84,6 +84,7 @@ python job_copilot.py --help              # all options
 ## Output
 
 - **Console** — a ranked table of the best matches.
+- **`job_matches.html`** — a graphical report (score rings, skill chips, links) — open it in a browser.
 - **`job_matches.json`** — full structured results (every field + match details).
 - **`job_matches.md`** — a readable report, one section per opening.
 
