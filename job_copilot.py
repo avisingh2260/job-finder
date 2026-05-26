@@ -282,6 +282,9 @@ def search_portals(terms: list[str], location: str, sites: list[str], results: i
                 location=location or None,
                 results_wanted=results,
                 country_indeed="USA" if needs_country else None,
+                # LinkedIn returns no description unless we ask for it; without this,
+                # every LinkedIn match scores 0% ("No description"). Slower but needed.
+                linkedin_fetch_description=True,
             )
         except Exception as exc:  # noqa: BLE001
             info(f"  Scrape failed for {term!r}: {exc}")
@@ -426,15 +429,25 @@ If it is NOT a job/hiring post, return {{"is_job_post": false}}.
 #  Matching
 # --------------------------------------------------------------------------- #
 def match_job(model_name: str, resume_text: str, job: dict) -> dict:
-    desc = job.get("description") or ""
-    if not desc.strip():
-        return {
-            "match_score": 0,
-            "match_verdict": "No description",
-            "matching_skills": [],
-            "missing_skills": [],
-            "match_rationale": "No description was available to evaluate this opening.",
-        }
+    desc = (job.get("description") or "").strip()
+    limited = False
+    if not desc:
+        # No full description (can happen on LinkedIn/Glassdoor). Fall back to the
+        # title/company so we still estimate a fit instead of returning a flat 0%.
+        desc = " — ".join(
+            filter(None, [job.get("title"), job.get("company"), job.get("location")])
+        ).strip()
+        limited = True
+        if not desc:
+            return {
+                "match_score": 0,
+                "match_verdict": "No data",
+                "matching_skills": [],
+                "missing_skills": [],
+                "match_rationale": "No description or title was available to evaluate.",
+            }
+    if limited:
+        desc = "(Only the job title/company was available; estimate the fit.)\n" + desc
 
     prompt = f"""
 You are an expert technical recruiter. Compare the candidate's resume with the job
