@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated reports
+job_matches.json
+job_matches.md
+*.json
+*.md
+!README.md
+
+# Résumés dropped into the folder (keep the instructions only)
+resumes/*
+!resumes/README.txt

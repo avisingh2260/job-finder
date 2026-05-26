@@ -1,0 +1,6 @@
+google-generativeai
+python-jobspy
+pypdf
+ddgs
+requests
+beautifulsoup4
