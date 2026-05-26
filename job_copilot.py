@@ -544,10 +544,15 @@ Job description:
 {desc[:6000]}
 ---
 
-Return ONLY a JSON object:
+Score the fit as an integer from 0 to 100 based on genuine overlap (skills,
+seniority, domain). Even when the job detail is limited, give your best estimate
+from the title and company — do NOT default to 0.
+
+Return ONLY a JSON object. Fill every field with your real assessment; the values
+below are format examples, not answers to copy:
 {{
-  "match_score": 0,
-  "match_verdict": "Excellent Fit (85-100) | Strong Competitor (70-84) | Skill Gap (50-69) | Not Aligned (0-49)",
+  "match_score": 78,
+  "match_verdict": "one of: Excellent Fit (85-100), Strong Competitor (70-84), Skill Gap (50-69), Not Aligned (0-49)",
   "matching_skills": ["skills the candidate has that the job wants"],
   "missing_skills": ["key skills the job wants that the resume lacks"],
   "match_rationale": "2-3 sentences explaining the score."
@@ -921,11 +926,19 @@ def main() -> None:
         info(f"Limiting AI scoring to {args.max_match} of {len(jobs)} openings (use --max-match to change).")
         jobs = jobs[: args.max_match]
 
+    empties = sum(1 for j in jobs if not (j.get("description") or "").strip())
+    if empties:
+        info(
+            f"Note: {empties}/{len(jobs)} openings arrived with no description "
+            f"(matched on title only — a board may be rate-limiting description fetches)."
+        )
+
     step(f"Scoring {len(jobs)} openings against your resume")
     for i, job in enumerate(jobs, 1):
         job["match"] = match_job(model_name, raw_text, job)
         score = job["match"].get("match_score")
-        info(f"  [{i}/{len(jobs)}] {score if score is not None else '--'}%  {job['title'][:50]}")
+        flag = "" if (job.get("description") or "").strip() else "  [title-only]"
+        info(f"  [{i}/{len(jobs)}] {score if score is not None else '--'}%  {job['title'][:48]}{flag}")
         time.sleep(0.4)
 
     jobs.sort(key=lambda j: j.get("match", {}).get("match_score") or -1, reverse=True)
