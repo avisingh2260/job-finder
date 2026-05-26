@@ -87,6 +87,28 @@ python job_copilot.py --help              # all options
 - **`job_matches.json`** — full structured results (every field + match details).
 - **`job_matches.md`** — a readable report, one section per opening.
 
+## Troubleshooting
+
+**`ERROR: No Gemini API key found`** — the key isn't visible to Python. On Windows,
+`setx` only affects *new* terminals, so reopen the terminal (or restart your editor)
+after setting it. The simplest fix is the `.env` file (Option A above). To see exactly
+what Python reads:
+
+```bash
+python -c "import os; print(repr(os.environ.get('GEMINI_API_KEY')))"
+```
+
+A real environment variable takes precedence over `.env`, so clear any stale
+`GEMINI_API_KEY` if it's wrong — or just bypass everything with `--api-key`.
+
+**A source returns nothing or errors** — job boards and LinkedIn rate-limit and serve
+CAPTCHAs to scrapers. Try again later, lower `--results`, narrow `--query`, or run with
+`--no-posts` to skip LinkedIn post scraping. The script keeps going when one source
+fails, so a partial run still produces a ranked report.
+
+**`ModuleNotFoundError`** — run `pip install -r requirements.txt` in the *same* Python
+environment you launch the script from.
+
 ## Notes & limitations
 
 - Your résumé and API key stay on your machine; the only data sent out is to the Gemini API for parsing, extraction, and scoring.
