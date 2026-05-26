@@ -14,9 +14,14 @@ WHAT IT DOES
 SETUP (one time)
   pip install google-generativeai python-jobspy pypdf ddgs requests beautifulsoup4
 
-  Get a free Gemini API key at https://aistudio.google.com/apikey , then:
-    Windows (PowerShell):  setx GEMINI_API_KEY "your-key-here"   (reopen terminal)
-    macOS / Linux:         export GEMINI_API_KEY="your-key-here"
+  Get a free Gemini API key at https://aistudio.google.com/apikey , then provide
+  it in ANY one of these ways:
+    * Easiest - create a file named ".env" next to this script, containing:
+          GEMINI_API_KEY=your-key-here
+    * Environment variable:
+          Windows (PowerShell):  setx GEMINI_API_KEY "your-key-here"  (reopen terminal)
+          macOS / Linux:         export GEMINI_API_KEY="your-key-here"
+    * Inline flag:               python job_copilot.py --api-key your-key-here
 
 USAGE
   # Drop your resume into a folder named "resumes", then:
@@ -85,6 +90,33 @@ def _strip_json_fences(text: str) -> str:
         text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
         text = re.sub(r"\n?```$", "", text)
     return text.strip()
+
+
+def load_env_file(path: str) -> dict:
+    """Tiny .env parser (no dependency). Reads KEY=value lines.
+
+    Supports surrounding quotes, '#' comments, blank lines, and an optional
+    leading 'export'. Returns a dict; missing file yields an empty dict.
+    """
+    values: dict[str, str] = {}
+    if not path or not os.path.isfile(path):
+        return values
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export "):].strip()
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key:
+                    values[key] = val
+    except OSError:
+        pass
+    return values
 
 
 # --------------------------------------------------------------------------- #
@@ -526,7 +558,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-posts", action="store_true", help="Skip LinkedIn post scraping.")
     p.add_argument("--max-match", type=int, default=30, help="Cap how many openings to AI-score.")
     p.add_argument("--top", type=int, default=15, help="How many matches to print to the console.")
-    p.add_argument("--api-key", help="Gemini API key (else uses GEMINI_API_KEY env var).")
+    p.add_argument("--env-file", default=".env", help="Path to a .env file holding GEMINI_API_KEY.")
+    p.add_argument("--api-key", help="Gemini API key (overrides the env var and .env file).")
     p.add_argument("--output", default="job_matches", help="Output filename stem (.json + .md).")
     return p.parse_args()
 
@@ -534,13 +567,24 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    api_key = (args.api_key or os.environ.get("GEMINI_API_KEY") or "").strip()
+    env_file = load_env_file(args.env_file)
+    api_key = (
+        args.api_key
+        or os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+        or env_file.get("GEMINI_API_KEY")
+        or env_file.get("GOOGLE_API_KEY")
+        or ""
+    ).strip()
     if not api_key:
         die(
-            "No Gemini API key found.\n"
-            "Set it once with:  setx GEMINI_API_KEY \"your-key\"  (Windows, reopen terminal)\n"
-            "             or:   export GEMINI_API_KEY=\"your-key\"  (macOS/Linux)\n"
-            "Or pass it inline: python job_copilot.py --api-key your-key\n"
+            "No Gemini API key found. Provide it in any one of these ways:\n"
+            f"  1. Create a file named '{args.env_file}' in this folder containing:\n"
+            "         GEMINI_API_KEY=your-key-here\n"
+            "  2. Set an environment variable:\n"
+            "         setx GEMINI_API_KEY \"your-key\"   (Windows - then REOPEN the terminal)\n"
+            "         export GEMINI_API_KEY=\"your-key\"  (macOS/Linux)\n"
+            "  3. Pass it inline:  python job_copilot.py --api-key your-key\n"
             "Get a free key at https://aistudio.google.com/apikey"
         )
 

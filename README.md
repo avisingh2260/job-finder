@@ -22,15 +22,28 @@ Requires **Python 3.9+**.
 pip install -r requirements.txt
 ```
 
-Get a free Gemini API key at <https://aistudio.google.com/apikey>, then set it:
+Get a free Gemini API key at <https://aistudio.google.com/apikey>, then provide it
+in **any one** of these ways:
+
+**Option A — `.env` file (easiest).** Copy the template and paste your key in:
 
 ```bash
-# Windows (PowerShell) — reopen the terminal afterwards
+cp .env.example .env      # then open .env and set GEMINI_API_KEY=your-key-here
+```
+
+The `.env` file is git-ignored, so your key never gets committed.
+
+**Option B — environment variable:**
+
+```bash
+# Windows (PowerShell) — reopen the terminal afterwards (setx only affects new terminals)
 setx GEMINI_API_KEY "your-key-here"
 
 # macOS / Linux
 export GEMINI_API_KEY="your-key-here"
 ```
+
+**Option C — inline flag:** `python job_copilot.py --api-key your-key-here`
 
 ## Usage
 
@@ -64,7 +77,8 @@ python job_copilot.py --help              # all options
 | `--no-posts` | off | Skip LinkedIn post scraping entirely. |
 | `--max-match` | `30` | Cap on how many openings to AI-score. |
 | `--top` | `15` | How many matches to print to the console. |
-| `--api-key` | env var | Gemini API key (otherwise read from `GEMINI_API_KEY`). |
+| `--env-file` | `.env` | Path to a `.env` file holding `GEMINI_API_KEY`. |
+| `--api-key` | env/.env | Gemini API key (overrides the env var and `.env` file). |
 | `--output` | `job_matches` | Output filename stem (`.json` + `.md`). |
 
 ## Output
