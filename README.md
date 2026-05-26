@@ -12,7 +12,7 @@ a ranked report.
 3. **Searches job portals** — LinkedIn, Indeed, Glassdoor, ZipRecruiter — via [`python-jobspy`](https://github.com/Bunsly/JobSpy), using search terms derived from your résumé.
 4. **Scrapes LinkedIn hiring posts** discovered through DuckDuckGo, extracting company, role, location, and how to apply / who to contact.
 5. **Scores each opening** against your résumé (match %, verdict, matching & missing skills, rationale) and ranks them.
-6. **Saves a report** as `job_matches.json` and `job_matches.md`, and prints a ranked summary to your terminal.
+6. **Saves a report** — a graphical `job_matches.html` plus `job_matches.json` and `job_matches.md` — and prints a ranked summary to your terminal.
 
 ## Setup
 
