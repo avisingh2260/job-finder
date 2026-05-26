@@ -31,10 +31,14 @@ USAGE
   python job_copilot.py --resume ./MyResume.pdf --location "San Francisco"
   python job_copilot.py --query "Frontend Engineer" --sites linkedin,indeed --results 20
   python job_copilot.py --no-posts        # skip LinkedIn post scraping
+  python job_copilot.py --hours-old 72 --max-applicants 10   # recent, low-competition
   python job_copilot.py --help
 
 NOTES
   * Your resume and API key stay on your machine; only Gemini calls leave it.
+  * --hours-old keeps only recent postings. --max-applicants drops LinkedIn jobs
+    with a confirmed applicant count at/above the threshold (best-effort: read
+    from LinkedIn's page when shown; jobs with an unknown count are kept).
   * Respect each site's Terms of Service and rate limits. Scrapers can break or
     hit CAPTCHAs - the script degrades gracefully and keeps going when a source
     fails, so a partial run still produces useful results.
@@ -264,7 +268,9 @@ Return ONLY a valid JSON object with this structure:
 # --------------------------------------------------------------------------- #
 #  Portal scraping (python-jobspy)
 # --------------------------------------------------------------------------- #
-def search_portals(terms: list[str], location: str, sites: list[str], results: int) -> list[dict]:
+def search_portals(
+    terms: list[str], location: str, sites: list[str], results: int, hours_old: int | None = None
+) -> list[dict]:
     _require("jobspy", "python-jobspy")
     from jobspy import scrape_jobs
     import pandas as pd
@@ -282,6 +288,8 @@ def search_portals(terms: list[str], location: str, sites: list[str], results: i
                 location=location or None,
                 results_wanted=results,
                 country_indeed="USA" if needs_country else None,
+                # Only return jobs posted within this many hours (recency filter).
+                hours_old=hours_old if hours_old and hours_old > 0 else None,
                 # LinkedIn returns no description unless we ask for it; without this,
                 # every LinkedIn match scores 0% ("No description"). Slower but needed.
                 linkedin_fetch_description=True,
@@ -305,9 +313,80 @@ def search_portals(terms: list[str], location: str, sites: list[str], results: i
                     "job_url": str(row.get("job_url") or ""),
                     "description": str(row.get("description") or ""),
                     "contact": "",
+                    "applicants": None,
+                    "applicants_label": "",
                 }
             )
     return collected
+
+
+# --------------------------------------------------------------------------- #
+#  Applicant-count filter (LinkedIn, best-effort)
+# --------------------------------------------------------------------------- #
+def linkedin_applicant_count(job_url: str) -> tuple[int | None, str]:
+    """Best-effort scrape of LinkedIn's applicant count for a job.
+
+    JobSpy does not expose this, so we hit the public guest job endpoint and
+    parse the applicant caption. Returns (count, label):
+      * exact number shown  -> (N, "N applicants")
+      * "first N" early note -> (None, "Among the first N applicants")
+      * unknown / blocked    -> (None, "")
+    """
+    import requests
+
+    m = re.search(r"(\d{6,})", job_url or "")
+    if not m:
+        return None, ""
+    url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{m.group(1)}"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        )
+    }
+    try:
+        resp = requests.get(url, headers=headers, timeout=12)
+        if resp.status_code != 200:
+            return None, ""
+        page = resp.text
+    except Exception:  # noqa: BLE001
+        return None, ""
+
+    early = re.search(r"first\s+(\d+)\s+applicants?", page, re.I)
+    if early:
+        return None, f"Among the first {early.group(1)} applicants"
+    exact = re.search(r"([\d,]+)\s+applicants?", page, re.I)
+    if exact:
+        n = int(exact.group(1).replace(",", ""))
+        return n, f"{n} applicants"
+    return None, ""
+
+
+def filter_by_applicants(jobs: list[dict], max_applicants: int) -> tuple[list[dict], int]:
+    """Annotate LinkedIn jobs with applicant counts and drop those with a
+    *confirmed* count >= max_applicants. Unknown or 'first N' (early-stage)
+    jobs and non-LinkedIn sources are kept, since we can't confirm a count."""
+    if not max_applicants or max_applicants <= 0:
+        return jobs, 0
+
+    li = [j for j in jobs if j.get("source") == "linkedin" and j.get("job_url")]
+    if li:
+        info(f"Checking applicant counts on {len(li)} LinkedIn job(s) (best-effort)...")
+
+    kept, dropped = [], 0
+    for job in jobs:
+        if job.get("source") != "linkedin" or not job.get("job_url"):
+            kept.append(job)
+            continue
+        count, label = linkedin_applicant_count(job["job_url"])
+        job["applicants"] = count
+        job["applicants_label"] = label
+        if isinstance(count, int) and count >= max_applicants:
+            dropped += 1
+        else:
+            kept.append(job)
+        time.sleep(0.3)
+    return kept, dropped
 
 
 # --------------------------------------------------------------------------- #
@@ -528,6 +607,8 @@ def write_reports(payload: dict, json_path: str, md_path: str) -> None:
             f"- **Location:** {job.get('location') or 'n/a'}",
             f"- **Verdict:** {m.get('match_verdict', 'n/a')}",
         ]
+        if job.get("applicants_label"):
+            lines.append(f"- **Applicants:** {job['applicants_label']}")
         if job.get("contact"):
             lines.append(f"- **Contact:** {job['contact']}")
         if job.get("job_url"):
@@ -572,6 +653,7 @@ h1{font-size:1.6rem;font-weight:600;margin-bottom:4px}
 .verdict{font-size:.72rem;color:var(--text);background:#21262d;border-radius:5px;padding:1px 8px;margin-left:auto}
 h3{font-size:1.05rem;font-weight:600;overflow-wrap:anywhere}
 .sub{color:var(--muted);font-size:.85rem;margin-top:2px}
+.appl{color:#3fb950;font-size:.78rem;font-weight:600;margin-top:6px}
 .rationale{font-size:.86rem;color:var(--text);margin-top:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .chip{font-size:.72rem;border-radius:6px;padding:2px 9px;border:1px solid var(--border)}
@@ -647,6 +729,9 @@ def write_html_report(payload: dict, html_path: str) -> None:
             e(b) for b in [job.get("company"), job.get("location"), job.get("date_posted")] if b
         )
 
+        appl = job.get("applicants_label") or ""
+        appl_html = f'<p class="appl">{e(appl)}</p>' if appl else ""
+
         text = (m.get("match_rationale") or job.get("description") or "").strip()
         rationale_html = (
             f'<p class="rationale">{e(text[:280])}{"…" if len(text) > 280 else ""}</p>'
@@ -683,7 +768,7 @@ def write_html_report(payload: dict, html_path: str) -> None:
             f'<div class="toprow"><span class="rank">#{i}</span><span class="src">{e(src_label)}</span>{verdict_html}</div>'
             f'<h3>{e(job.get("title") or "Untitled role")}</h3>'
             f'<p class="sub">{sub}</p>'
-            f"{rationale_html}{chips}{contact_html}{links_html}"
+            f"{appl_html}{rationale_html}{chips}{contact_html}{links_html}"
             "</div></article>"
         )
 
@@ -737,9 +822,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--location", default="", help="Location filter, e.g. 'Remote' or 'San Francisco'.")
     p.add_argument("--sites", default="linkedin,indeed", help="Comma-separated portals to search.")
     p.add_argument("--results", type=int, default=15, help="Results wanted per portal per query.")
+    p.add_argument("--hours-old", type=int, default=168, help="Only jobs posted within this many hours (0 = no limit).")
     p.add_argument("--max-queries", type=int, default=2, help="How many resume-derived terms to search.")
     p.add_argument("--max-posts", type=int, default=8, help="Max LinkedIn posts to scrape.")
     p.add_argument("--no-posts", action="store_true", help="Skip LinkedIn post scraping.")
+    p.add_argument("--max-applicants", type=int, default=10, help="Drop LinkedIn jobs with >= this many applicants (0 = off; best-effort).")
     p.add_argument("--max-match", type=int, default=30, help="Cap how many openings to AI-score.")
     p.add_argument("--top", type=int, default=15, help="How many matches to print to the console.")
     p.add_argument("--env-file", default=".env", help="Path to a .env file holding GEMINI_API_KEY.")
@@ -801,8 +888,9 @@ def main() -> None:
 
     sites = [s.strip().lower() for s in args.sites.split(",") if s.strip()]
 
-    step("Searching job portals")
-    jobs = search_portals(terms, args.location, sites, args.results)
+    recency = f" (last {args.hours_old}h)" if args.hours_old and args.hours_old > 0 else ""
+    step(f"Searching job portals{recency}")
+    jobs = search_portals(terms, args.location, sites, args.results, args.hours_old)
     info(f"Collected {len(jobs)} portal listings.")
 
     if not args.no_posts:
@@ -821,6 +909,13 @@ def main() -> None:
     jobs = dedupe_jobs(jobs)
     if not jobs:
         die("No openings found from any source. Try --query, a different --location, or more --sites.")
+
+    if args.max_applicants and args.max_applicants > 0:
+        step(f"Filtering to jobs with fewer than {args.max_applicants} applicants (LinkedIn, best-effort)")
+        jobs, dropped = filter_by_applicants(jobs, args.max_applicants)
+        info(f"Dropped {dropped} job(s) with {args.max_applicants}+ applicants; {len(jobs)} remain.")
+        if not jobs:
+            die("Every job was filtered out. Raise --max-applicants, widen --hours-old, or broaden the search.")
 
     if len(jobs) > args.max_match:
         info(f"Limiting AI scoring to {args.max_match} of {len(jobs)} openings (use --max-match to change).")

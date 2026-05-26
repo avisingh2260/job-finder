@@ -59,6 +59,7 @@ Or customize:
 python job_copilot.py --resume ./MyResume.pdf --location "San Francisco"
 python job_copilot.py --query "Frontend Engineer" --sites linkedin,indeed --results 20
 python job_copilot.py --no-posts          # skip LinkedIn post scraping
+python job_copilot.py --hours-old 72 --max-applicants 10   # recent, low-competition only
 python job_copilot.py --help              # all options
 ```
 
@@ -72,9 +73,11 @@ python job_copilot.py --help              # all options
 | `--location` | – | Location filter, e.g. `Remote` or `San Francisco`. |
 | `--sites` | `linkedin,indeed` | Comma-separated portals: `linkedin,indeed,glassdoor,zip_recruiter`. |
 | `--results` | `15` | Results wanted per portal per query. |
+| `--hours-old` | `168` | Only jobs posted within this many hours (`0` = no limit). |
 | `--max-queries` | `2` | How many résumé-derived terms to search. |
 | `--max-posts` | `8` | Max LinkedIn posts to scrape. |
 | `--no-posts` | off | Skip LinkedIn post scraping entirely. |
+| `--max-applicants` | `10` | Drop LinkedIn jobs with ≥ this many applicants (`0` = off; best-effort). |
 | `--max-match` | `30` | Cap on how many openings to AI-score. |
 | `--top` | `15` | How many matches to print to the console. |
 | `--env-file` | `.env` | Path to a `.env` file holding `GEMINI_API_KEY`. |
@@ -113,6 +116,7 @@ environment you launch the script from.
 ## Notes & limitations
 
 - Your résumé and API key stay on your machine; the only data sent out is to the Gemini API for parsing, extraction, and scoring.
+- **Recency** (`--hours-old`) is applied at search time by the job boards. **Applicant count is best-effort and LinkedIn-only** — the job-board scraper doesn't return it, so `--max-applicants` reads LinkedIn's own "N applicants" / "first N applicants" caption when present. Jobs where the count can't be confirmed are **kept**, not dropped, so the filter never silently empties your results.
 - **LinkedIn post scraping is best-effort.** LinkedIn has no public posts API and serves login walls / CAPTCHAs to unauthenticated requests, so posts are discovered via search and the script degrades gracefully (falls back to search snippets, skips blocked pages) rather than failing. The job-board search is the more reliable source.
 - Scrapers can break or get rate-limited. The script keeps going when a source fails, so a partial run still produces useful results.
 - Please respect each site's Terms of Service and use reasonable rate limits.
