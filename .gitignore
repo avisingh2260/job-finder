@@ -12,6 +12,7 @@ venv/
 # Generated reports
 job_matches.json
 job_matches.md
+job_matches.html
 *.json
 *.md
 !README.md
