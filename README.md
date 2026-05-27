@@ -124,6 +124,12 @@ description fetch, so those jobs were scored from the title/company alone. Score
 are still real estimates, just less precise. Fetch full descriptions by running with
 `--sites indeed,glassdoor`, lowering `--results`, or simply retrying later.
 
+**PDF won't read / "No text could be extracted"** — the file is likely a scanned or
+image-only PDF. Export a text-based PDF, or save the résumé as `.txt`/`.md`. (Designed,
+multi-column résumés read fine but in mixed order — that's OK, the AI still parses
+them. The script also drops `README` files so the placeholder isn't mistaken for a
+résumé, and prints how many characters it extracted so you can confirm the right file.)
+
 **`ModuleNotFoundError`** — run `pip install -r requirements.txt` in the *same* Python
 environment you launch the script from.
 

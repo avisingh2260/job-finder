@@ -202,6 +202,7 @@ def pick_resume_file(resume: str | None, resume_dir: str) -> str:
         p
         for p in glob.glob(os.path.join(resume_dir, "*"))
         if p.lower().endswith(SUPPORTED_RESUME_EXTS)
+        and not os.path.basename(p).lower().startswith("readme")
     ]
     if not candidates:
         die(
@@ -219,17 +220,34 @@ def extract_text(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     if ext == ".pdf":
         _require("pypdf", "pypdf")
+        import logging as _logging
+        import warnings as _warnings
+
+        # pypdf logs noisy recovery warnings (e.g. "incorrect startxref pointer")
+        # on many real-world PDFs even though extraction succeeds — quiet them.
+        _logging.getLogger("pypdf").setLevel(_logging.ERROR)
         from pypdf import PdfReader
 
-        reader = PdfReader(path)
-        text = "\n".join((page.extract_text() or "") for page in reader.pages)
+        try:
+            with _warnings.catch_warnings():
+                _warnings.simplefilter("ignore")
+                reader = PdfReader(path)
+                text = "\n".join((page.extract_text() or "") for page in reader.pages)
+        except Exception as exc:  # noqa: BLE001
+            die(
+                f"Could not read PDF '{path}': {exc}\n"
+                "If it's a scanned/image-only PDF, export a text-based PDF or save it as .txt/.md."
+            )
     else:
         with open(path, "r", encoding="utf-8", errors="ignore") as fh:
             text = fh.read()
 
     text = text.strip()
     if not text:
-        die(f"Could not extract any text from '{path}'.")
+        die(
+            f"No text could be extracted from '{path}'. "
+            "If it's a scanned/image-only PDF, export a text-based version or save it as .txt/.md."
+        )
     return text
 
 
@@ -895,6 +913,7 @@ def main() -> None:
     resume_path = pick_resume_file(args.resume, args.resume_dir)
     info(f"Resume: {resume_path}")
     raw_text = extract_text(resume_path)
+    info(f"Extracted {len(raw_text):,} characters of text.")
 
     step("Parsing resume with Gemini")
     profile = parse_resume(model_name, raw_text)
