@@ -110,6 +110,12 @@ CAPTCHAs to scrapers. Try again later, lower `--results`, narrow `--query`, or r
 `--no-posts` to skip LinkedIn post scraping. The script keeps going when one source
 fails, so a partial run still produces a ranked report.
 
+**Scores look like estimates / lines show `[title-only]`** — that flag (and the
+`N/M openings arrived with no description` note) means a board rate-limited the
+description fetch, so those jobs were scored from the title/company alone. Scores
+are still real estimates, just less precise. Fetch full descriptions by running with
+`--sites indeed,glassdoor`, lowering `--results`, or simply retrying later.
+
 **`ModuleNotFoundError`** — run `pip install -r requirements.txt` in the *same* Python
 environment you launch the script from.
 
