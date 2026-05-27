@@ -11,7 +11,7 @@ a ranked report.
 2. **Parses it with Gemini** into a structured profile (skills, experience, suggested titles & keywords).
 3. **Searches job portals** — LinkedIn, Indeed, Glassdoor, ZipRecruiter — via [`python-jobspy`](https://github.com/Bunsly/JobSpy), using search terms derived from your résumé. Limited to the last 7 days by default (`--hours-old`).
 4. **Scrapes recent LinkedIn hiring posts** discovered through DuckDuckGo (same recency window), extracting company, role, location, and how to apply / who to contact.
-5. **Scores each opening** against your résumé (match %, verdict, matching & missing skills, rationale) and ranks them.
+5. **Scores each opening** against your résumé — weighted toward your experience and seniority — (match %, verdict, matching & missing skills, rationale) and ranks them. Aims for a list of ~30+ openings.
 6. **Saves a report** — a graphical `job_matches.html` plus `job_matches.json` and `job_matches.md` — and prints a ranked summary to your terminal.
 
 ## Setup
@@ -72,14 +72,14 @@ python job_copilot.py --help              # all options
 | `--query` | derived | Override the search term (default: derived from your résumé). |
 | `--location` | – | Location filter, e.g. `Remote` or `San Francisco`. |
 | `--sites` | `linkedin,indeed` | Comma-separated portals: `linkedin,indeed,glassdoor,zip_recruiter`. |
-| `--results` | `15` | Results wanted per portal per query. |
+| `--results` | `25` | Results wanted per portal per query. |
 | `--hours-old` | `168` | Recency window in hours for **jobs and posts** (`0` = no limit; default = 1 week). |
-| `--max-queries` | `2` | How many résumé-derived terms to search. |
-| `--max-posts` | `8` | Max LinkedIn posts to scrape. |
+| `--max-queries` | `5` | How many résumé-derived titles/keywords to search (more = broader, more experience-aligned coverage). |
+| `--max-posts` | `15` | Max LinkedIn posts to scrape. |
 | `--no-posts` | off | Skip LinkedIn post scraping entirely. |
 | `--max-applicants` | `10` | Drop LinkedIn jobs with ≥ this many applicants (`0` = off; best-effort). |
-| `--max-match` | `30` | Cap on how many openings to AI-score. |
-| `--top` | `15` | How many matches to print to the console. |
+| `--max-match` | `50` | Cap on how many openings to AI-score. |
+| `--top` | `30` | How many matches to print to the console. |
 | `--env-file` | `.env` | Path to a `.env` file holding `GEMINI_API_KEY`. |
 | `--api-key` | env/.env | Gemini API key (overrides the env var and `.env` file). |
 | `--output` | `job_matches` | Output filename stem (`.json` + `.md`). |
