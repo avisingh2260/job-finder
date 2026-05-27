@@ -57,7 +57,7 @@ Or customize:
 
 ```bash
 python job_copilot.py --resume ./MyResume.pdf --location "San Francisco"
-python job_copilot.py --query "Frontend Engineer" --sites linkedin,indeed --results 20
+python job_copilot.py --query "Backend Engineer" --location Remote   # override the auto-detected search
 python job_copilot.py --no-posts          # skip LinkedIn post scraping
 python job_copilot.py --hours-old 72 --max-applicants 10   # recent, low-competition only
 python job_copilot.py --hours-old 720 --max-applicants 0 --results 60   # maximum volume
