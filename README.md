@@ -60,8 +60,16 @@ python job_copilot.py --resume ./MyResume.pdf --location "San Francisco"
 python job_copilot.py --query "Frontend Engineer" --sites linkedin,indeed --results 20
 python job_copilot.py --no-posts          # skip LinkedIn post scraping
 python job_copilot.py --hours-old 72 --max-applicants 10   # recent, low-competition only
+python job_copilot.py --hours-old 720 --max-applicants 0 --results 60   # maximum volume
 python job_copilot.py --help              # all options
 ```
+
+**Want more results?** Volume is capped by the filters, not the search. By default it
+pulls from all four boards, but the 1-week window (`--hours-old`) and the LinkedIn
+`--max-applicants` filter are the main limiters. For the largest list, widen them:
+`--hours-old 720` (last month), `--max-applicants 0` (keep high-competition jobs),
+and raise `--results`/`--max-match`. Note: bigger runs are slower and more likely to
+hit board rate limits and Gemini quota.
 
 ### Options
 
@@ -71,15 +79,15 @@ python job_copilot.py --help              # all options
 | `--resume-dir` | `resumes` | Folder to read the résumé from (most recent file wins). |
 | `--query` | derived | Override the search term (default: derived from your résumé). |
 | `--location` | – | Location filter, e.g. `Remote` or `San Francisco`. |
-| `--sites` | `linkedin,indeed` | Comma-separated portals: `linkedin,indeed,glassdoor,zip_recruiter`. |
-| `--results` | `25` | Results wanted per portal per query. |
+| `--sites` | all 4 | Comma-separated portals: `linkedin,indeed,glassdoor,zip_recruiter`. |
+| `--results` | `40` | Results wanted per portal per query. |
 | `--hours-old` | `168` | Recency window in hours for **jobs and posts** (`0` = no limit; default = 1 week). |
 | `--max-queries` | `5` | How many résumé-derived titles/keywords to search (more = broader, more experience-aligned coverage). |
 | `--max-posts` | `15` | Max LinkedIn posts to scrape. |
 | `--no-posts` | off | Skip LinkedIn post scraping entirely. |
 | `--max-applicants` | `10` | Drop LinkedIn jobs with ≥ this many applicants (`0` = off; best-effort). |
-| `--max-match` | `50` | Cap on how many openings to AI-score. |
-| `--top` | `30` | How many matches to print to the console. |
+| `--max-match` | `60` | Cap on how many openings to AI-score. |
+| `--top` | `40` | How many matches to print to the console. |
 | `--env-file` | `.env` | Path to a `.env` file holding `GEMINI_API_KEY`. |
 | `--api-key` | env/.env | Gemini API key (overrides the env var and `.env` file). |
 | `--output` | `job_matches` | Output filename stem (`.json` + `.md`). |

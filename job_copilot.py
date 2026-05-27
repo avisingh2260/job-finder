@@ -845,15 +845,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--resume-dir", default="resumes", help="Folder to read the resume from.")
     p.add_argument("--query", help="Override search term (default: derived from your resume).")
     p.add_argument("--location", default="", help="Location filter, e.g. 'Remote' or 'San Francisco'.")
-    p.add_argument("--sites", default="linkedin,indeed", help="Comma-separated portals to search.")
-    p.add_argument("--results", type=int, default=25, help="Results wanted per portal per query.")
+    p.add_argument("--sites", default="linkedin,indeed,glassdoor,zip_recruiter", help="Comma-separated portals to search.")
+    p.add_argument("--results", type=int, default=40, help="Results wanted per portal per query.")
     p.add_argument("--hours-old", type=int, default=168, help="Only jobs posted within this many hours (0 = no limit).")
     p.add_argument("--max-queries", type=int, default=5, help="How many resume-derived titles/keywords to search (more = broader, more experience-aligned).")
     p.add_argument("--max-posts", type=int, default=15, help="Max LinkedIn posts to scrape.")
     p.add_argument("--no-posts", action="store_true", help="Skip LinkedIn post scraping.")
     p.add_argument("--max-applicants", type=int, default=10, help="Drop LinkedIn jobs with >= this many applicants (0 = off; best-effort).")
-    p.add_argument("--max-match", type=int, default=50, help="Cap how many openings to AI-score.")
-    p.add_argument("--top", type=int, default=30, help="How many matches to print to the console.")
+    p.add_argument("--max-match", type=int, default=60, help="Cap how many openings to AI-score.")
+    p.add_argument("--top", type=int, default=40, help="How many matches to print to the console.")
     p.add_argument("--env-file", default=".env", help="Path to a .env file holding GEMINI_API_KEY.")
     p.add_argument("--api-key", help="Gemini API key (overrides the env var and .env file).")
     p.add_argument("--output", default="job_matches", help="Output filename stem (.json + .md).")
@@ -944,9 +944,9 @@ def main() -> None:
 
     if len(jobs) < 30:
         info(
-            f"Only {len(jobs)} openings after filters. To reach ~30+, widen the search — "
-            "e.g. --hours-old 336, --max-applicants 0, --max-queries 6, or add "
-            "--sites linkedin,indeed,glassdoor,zip_recruiter."
+            f"Only {len(jobs)} openings after filters. For more volume, relax the filters — "
+            "e.g. --hours-old 720 (last month), --max-applicants 0 (keep high-competition "
+            "LinkedIn jobs too), or --results 60."
         )
 
     if len(jobs) > args.max_match:
