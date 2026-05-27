@@ -36,7 +36,8 @@ USAGE
 
 NOTES
   * Your resume and API key stay on your machine; only Gemini calls leave it.
-  * --hours-old keeps only recent postings. --max-applicants drops LinkedIn jobs
+  * --hours-old keeps only recent postings (jobs and LinkedIn posts; default 1 week).
+    --max-applicants drops LinkedIn jobs
     with a confirmed applicant count at/above the threshold (best-effort: read
     from LinkedIn's page when shown; jobs with an unknown count are kept).
   * Respect each site's Terms of Service and rate limits. Scrapers can break or
@@ -392,7 +393,20 @@ def filter_by_applicants(jobs: list[dict], max_applicants: int) -> tuple[list[di
 # --------------------------------------------------------------------------- #
 #  LinkedIn post scraping (DuckDuckGo discovery + page fetch + Gemini extract)
 # --------------------------------------------------------------------------- #
-def _ddgs_search(query: str, max_results: int) -> list[dict]:
+def _ddgs_timelimit(hours_old: int | None) -> str | None:
+    """Map an hours-old window to DuckDuckGo's coarse time filter (d/w/m/y)."""
+    if not hours_old or hours_old <= 0:
+        return None
+    if hours_old <= 24:
+        return "d"
+    if hours_old <= 168:
+        return "w"
+    if hours_old <= 744:
+        return "m"
+    return "y"
+
+
+def _ddgs_search(query: str, max_results: int, timelimit: str | None = None) -> list[dict]:
     """Return DuckDuckGo text results, tolerating either ddgs package name."""
     try:
         from ddgs import DDGS
@@ -403,7 +417,7 @@ def _ddgs_search(query: str, max_results: int) -> list[dict]:
             die("Missing dependency 'ddgs'. Install with: pip install ddgs")
     try:
         with DDGS() as ddgs:
-            return list(ddgs.text(query, max_results=max_results))
+            return list(ddgs.text(query, max_results=max_results, timelimit=timelimit))
     except Exception as exc:  # noqa: BLE001
         info(f"  DuckDuckGo search failed: {exc}")
         return []
@@ -433,9 +447,12 @@ def fetch_page_text(url: str) -> str:
         return ""
 
 
-def find_linkedin_posts(terms: list[str], location: str, max_posts: int) -> list[dict]:
+def find_linkedin_posts(
+    terms: list[str], location: str, max_posts: int, hours_old: int | None = None
+) -> list[dict]:
     seen_urls: set[str] = set()
     posts: list[dict] = []
+    timelimit = _ddgs_timelimit(hours_old)
 
     loc = f' "{location}"' if location else ""
     queries = []
@@ -448,7 +465,7 @@ def find_linkedin_posts(terms: list[str], location: str, max_posts: int) -> list
     for query in queries:
         if len(posts) >= max_posts:
             break
-        for hit in _ddgs_search(query, max_results=max_posts):
+        for hit in _ddgs_search(query, max_results=max_posts, timelimit=timelimit):
             url = hit.get("href") or hit.get("url") or ""
             if "linkedin.com/posts/" not in url or url in seen_urls:
                 continue
@@ -899,8 +916,8 @@ def main() -> None:
     info(f"Collected {len(jobs)} portal listings.")
 
     if not args.no_posts:
-        step("Scraping LinkedIn hiring posts")
-        posts = find_linkedin_posts(terms, args.location, args.max_posts)
+        step(f"Scraping LinkedIn hiring posts{recency}")
+        posts = find_linkedin_posts(terms, args.location, args.max_posts, args.hours_old)
         info(f"Found {len(posts)} candidate posts; extracting details...")
         for i, post in enumerate(posts, 1):
             extracted = extract_post_job(model_name, post)

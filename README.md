@@ -73,7 +73,7 @@ python job_copilot.py --help              # all options
 | `--location` | – | Location filter, e.g. `Remote` or `San Francisco`. |
 | `--sites` | `linkedin,indeed` | Comma-separated portals: `linkedin,indeed,glassdoor,zip_recruiter`. |
 | `--results` | `15` | Results wanted per portal per query. |
-| `--hours-old` | `168` | Only jobs posted within this many hours (`0` = no limit). |
+| `--hours-old` | `168` | Recency window in hours for **jobs and posts** (`0` = no limit; default = 1 week). |
 | `--max-queries` | `2` | How many résumé-derived terms to search. |
 | `--max-posts` | `8` | Max LinkedIn posts to scrape. |
 | `--no-posts` | off | Skip LinkedIn post scraping entirely. |
@@ -122,7 +122,7 @@ environment you launch the script from.
 ## Notes & limitations
 
 - Your résumé and API key stay on your machine; the only data sent out is to the Gemini API for parsing, extraction, and scoring.
-- **Recency** (`--hours-old`) is applied at search time by the job boards. **Applicant count is best-effort and LinkedIn-only** — the job-board scraper doesn't return it, so `--max-applicants` reads LinkedIn's own "N applicants" / "first N applicants" caption when present. Jobs where the count can't be confirmed are **kept**, not dropped, so the filter never silently empties your results.
+- **Recency** (`--hours-old`, default 1 week) limits portal **jobs** at search time and restricts LinkedIn **post** discovery to DuckDuckGo's nearest time bucket (day / week / month / year). **Applicant count is best-effort and LinkedIn-only** — the job-board scraper doesn't return it, so `--max-applicants` reads LinkedIn's own "N applicants" / "first N applicants" caption when present. Jobs where the count can't be confirmed are **kept**, not dropped, so the filter never silently empties your results.
 - **LinkedIn post scraping is best-effort.** LinkedIn has no public posts API and serves login walls / CAPTCHAs to unauthenticated requests, so posts are discovered via search and the script degrades gracefully (falls back to search snippets, skips blocked pages) rather than failing. The job-board search is the more reliable source.
 - Scrapers can break or get rate-limited. The script keeps going when a source fails, so a partial run still produces useful results.
 - Please respect each site's Terms of Service and use reasonable rate limits.
